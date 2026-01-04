@@ -260,28 +260,34 @@ const TaskDetail = () => {
                   Status History
                 </label>
                 <div className="space-y-3">
-                  {[...task.statusHistory].reverse().map((history, index) => (
-                    <div
-                      key={index}
-                      className="bg-gray-50 border border-gray-200 rounded-lg p-4"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {history.status.replace("-", " ").toUpperCase()}
-                          </p>
-                          {history.note && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              {history.note}
+                  {[...task.statusHistory]
+                    .filter((history) => history != null) // Filter out null/undefined
+                    .reverse()
+                    .map((history, index) => (
+                      <div
+                        key={index}
+                        className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {history?.status?.replace("-", " ").toUpperCase() ||
+                                "UNKNOWN"}
                             </p>
-                          )}
+                            {history?.note && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                {history.note}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {history?.changedAt
+                              ? new Date(history.changedAt).toLocaleString()
+                              : "N/A"}
+                          </span>
                         </div>
-                        <span className="text-xs text-gray-500">
-                          {new Date(history.changedAt).toLocaleString()}
-                        </span>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             )}
