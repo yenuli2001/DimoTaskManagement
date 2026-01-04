@@ -1,0 +1,119 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Login from "./components/Auth/Login";
+import Register from "./components/Auth/Register";
+import AdminDashboard from "./components/Admin/AdminDashboard";
+import ProjectDetail from "./components/Admin/ProjectDetail";
+import EmployeeTasks from "./components/Admin/EmployeeTasks";
+import EmployeeDashboard from "./components/Employee/EmployeeDashboard";
+import EmployeeProjectTasks from "./components/Employee/EmployeeProjectTasks";
+import TaskDetail from "./components/Employee/TaskDetail";
+import ProtectedRoute from "./components/Layout/ProtectedRoute";
+
+const AppRoutes = () => {
+  const { currentUser, userRole } = useAuth();
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          !currentUser ? (
+            <Login />
+          ) : (
+            <Navigate to={userRole === "admin" ? "/admin" : "/employee"} />
+          )
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          !currentUser ? (
+            <Register />
+          ) : (
+            <Navigate to={userRole === "admin" ? "/admin" : "/employee"} />
+          )
+        }
+      />
+
+      {/* Admin Routes */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/project/:projectId"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <ProjectDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/project/:projectId/employee/:employeeId"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <EmployeeTasks />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Employee Routes */}
+      <Route
+        path="/employee"
+        element={
+          <ProtectedRoute requiredRole="employee">
+            <EmployeeDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/employee/project/:projectId"
+        element={
+          <ProtectedRoute requiredRole="employee">
+            <EmployeeProjectTasks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/employee/task/:taskId"
+        element={
+          <ProtectedRoute requiredRole="employee">
+            <TaskDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Default Route */}
+      <Route
+        path="/"
+        element={
+          currentUser ? (
+            <Navigate to={userRole === "admin" ? "/admin" : "/employee"} />
+          ) : (
+            <Navigate to="/login" />
+          )
+        }
+      />
+
+      {/* Catch all */}
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
+
+export default App;
