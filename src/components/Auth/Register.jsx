@@ -22,31 +22,38 @@ const Register = () => {
     });
   };
 
+  const { name, email, password, confirmPassword, role } = formData;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (formData.password !== formData.confirmPassword) {
-      return setError("Passwords do not match");
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
     }
-
-    if (formData.password.length < 6) {
-      return setError("Password must be at least 6 characters");
-    }
-
-    setLoading(true);
 
     try {
-      await register(
-        formData.email,
-        formData.password,
-        formData.name,
-        formData.role
-      );
-      navigate(formData.role === "admin" ? "/admin" : "/employee");
+      setLoading(true);
+      await register(email, password, name, role);
+      // Success - user will be redirected by the route protection
     } catch (err) {
-      setError("Failed to create account. Email may already be in use.");
-      console.error(err);
+      console.error("Registration error:", err);
+
+      // Handle specific Firebase errors
+      if (err.code === "auth/email-already-in-use") {
+        setError("This email is already registered. Please login instead.");
+      } else if (err.code === "auth/weak-password") {
+        setError("Password should be at least 6 characters.");
+      } else if (err.code === "auth/invalid-email") {
+        setError("Invalid email address.");
+      } else if (err.code === "auth/operation-not-allowed") {
+        setError(
+          "Email/password authentication is not enabled. Please contact administrator."
+        );
+      } else {
+        setError(err.message || "Failed to create account. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
