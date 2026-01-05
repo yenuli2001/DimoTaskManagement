@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   collection,
@@ -8,6 +8,7 @@ import {
   doc,
   getDoc,
   deleteDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { useAuth } from "../../context/AuthContext";
@@ -16,9 +17,13 @@ import Navbar from "../Layout/Navbar";
 const AdminDashboard = () => {
   const [projects, setProjects] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
   const [userName, setUserName] = useState("");
+  const [openMenuId, setOpenMenuId] = useState(null);
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const menuRef = useRef(null);
 
   useEffect(() => {
     // Get user name
@@ -43,13 +48,38 @@ const AdminDashboard = () => {
     return unsubscribe;
   }, [currentUser]);
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleMenuToggle = (e, projectId) => {
+    e.stopPropagation();
+    setOpenMenuId(openMenuId === projectId ? null : projectId);
+  };
+
+  const handleEditProject = (e, project) => {
+    e.stopPropagation();
+    setEditingProject(project);
+    setShowEditModal(true);
+    setOpenMenuId(null);
+  };
+
   const handleDeleteProject = async (e, projectId, projectName) => {
-    e.stopPropagation(); // Prevent card click navigation
-    
+    e.stopPropagation();
+    setOpenMenuId(null);
+
     const confirmDelete = window.confirm(
       `Are you sure you want to delete "${projectName}"? This action cannot be undone.`
     );
-    
+
     if (confirmDelete) {
       try {
         await deleteDoc(doc(db, "projects", projectId));
@@ -102,27 +132,77 @@ const AdminDashboard = () => {
                 onClick={() => navigate(`/admin/project/${project.id}`)}
                 className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 cursor-pointer overflow-hidden relative"
               >
-                {/* Delete Button */}
-                <button
-                  onClick={(e) => handleDeleteProject(e, project.id, project.name)}
-                  className="absolute top-2 right-2 z-10 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-200 shadow-lg"
-                  title="Delete project"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                {/* Three Dot Menu */}
+                <div className="absolute top-2 right-2 z-10" ref={openMenuId === project.id ? menuRef : null}>
+                  <button
+                    onClick={(e) => handleMenuToggle(e, project.id)}
+                    className="bg-white text-gray-600 p-2 rounded-full hover:bg-gray-100 transition duration-200 shadow-md"
+                    title="Options"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {openMenuId === project.id && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
+                      <button
+                        onClick={(e) => handleEditProject(e, project)}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        <span>Edit Project</span>
+                      </button>
+                      <button
+                        onClick={(e) =>
+                          handleDeleteProject(e, project.id, project.name)
+                        }
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                        <span>Delete Project</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 <div className="bg-gradient-to-r from-dimo-blue to-dimo-dark p-6">
                   <h3 className="text-xl font-bold text-white pr-8">
@@ -132,7 +212,7 @@ const AdminDashboard = () => {
                 <div className="p-6">
                   <div className="flex items-center justify-between text-sm text-gray-600">
                     <span>{project.employees?.length || 0} Employees</span>
-                    <span className="text-dimo-blue">View Details →</span>
+                    <span className="text-dimo-blue text-dimo-blue text-sm font-medium">View Details →</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-4">
                     Created: {new Date(project.createdAt).toLocaleDateString()}
@@ -148,6 +228,82 @@ const AdminDashboard = () => {
       {showCreateModal && (
         <CreateProjectModal onClose={() => setShowCreateModal(false)} />
       )}
+
+      {/* Edit Project Modal */}
+      {showEditModal && editingProject && (
+        <EditProjectModal
+          project={editingProject}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingProject(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const EditProjectModal = ({ project, onClose }) => {
+  const [projectName, setProjectName] = useState(project.name);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await updateDoc(doc(db, "projects", project.id), {
+        name: projectName,
+      });
+      onClose();
+    } catch (error) {
+      console.error("Error updating project:", error);
+      alert("Failed to update project");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-md w-full">
+        <div className="bg-dimo-blue text-white p-6 rounded-t-lg">
+          <h2 className="text-2xl font-bold">Edit Project</h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Project Name
+            </label>
+            <input
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none"
+              placeholder="Enter project name"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !projectName}
+              className="px-6 py-3 bg-dimo-blue text-white rounded-lg hover:bg-dimo-dark transition disabled:opacity-50"
+            >
+              {loading ? "Updating..." : "Update Project"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

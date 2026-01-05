@@ -51,13 +51,13 @@ const EmployeeProjectTasks = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case "complete":
-        return "bg-green-100 text-green-800 border-green-300";
+        return "bg-green-100 text-green-800";
       case "in-progress":
-        return "bg-blue-100 text-blue-800 border-blue-300";
+        return "bg-blue-100 text-blue-800";
       case "hold":
-        return "bg-yellow-100 text-yellow-800 border-yellow-300";
+        return "bg-yellow-100 text-yellow-800";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -89,67 +89,74 @@ const EmployeeProjectTasks = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tasks.map((task) => (
               <div
                 key={task.id}
                 onClick={() => navigate(`/employee/task/${task.id}`)}
-                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer overflow-hidden"
+                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 cursor-pointer overflow-hidden"
               >
-                <div className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                        {task.name}
-                      </h3>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">Created:</span>
-                          <span>
-                            {new Date(task.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">Target:</span>
-                          <span>
-                            {new Date(task.targetDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <span
-                        className={`px-4 py-2 rounded-full text-sm font-semibold border-2 ${getStatusColor(
-                          task.status
-                        )}`}
-                      >
-                        {task.status.replace("-", " ").toUpperCase()}
-                      </span>
-                    </div>
+                {/* Card Header with Blue Gradient */}
+                <div className="bg-gradient-to-r from-dimo-blue to-dimo-dark p-4">
+                  <h3 className="text-lg font-bold text-white truncate">
+                    {task.name}
+                  </h3>
+                  <p className="text-xs text-gray-200 mt-1">
+                    Created: {new Date(task.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-4 space-y-3">
+                  {/* Status */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                      Status:
+                    </span>
+                    <span
+                      className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                        task.status
+                      )}`}
+                    >
+                      {task.status.replace("-", " ").toUpperCase()}
+                    </span>
                   </div>
 
+                  {/* Target Date */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                      Target Date:
+                    </span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(task.targetDate).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {/* Approved Badge */}
                   {task.approved && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
-                        ✓ Approved by Admin
+                    <div className="pt-3 border-t border-gray-200">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                        ✓ Approved 
                       </span>
                     </div>
                   )}
 
+                  {/* Rejection Reason */}
                   {task.rejectionReason && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="pt-3 border-t border-gray-200">
                       <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                        <p className="text-sm font-medium text-red-800">
+                        <p className="text-xs font-medium text-red-800 mb-1">
                           Rejection Reason:
                         </p>
-                        <p className="text-sm text-red-700 mt-1">
+                        <p className="text-sm text-red-700">
                           {task.rejectionReason}
                         </p>
                       </div>
                     </div>
                   )}
 
-                  <div className="mt-4 pt-4 border-t border-gray-200">
+                  {/* View Details Link */}
+                  <div className="pt-3 border-t border-gray-200">
                     <span className="text-dimo-blue text-sm font-medium">
                       View Details →
                     </span>

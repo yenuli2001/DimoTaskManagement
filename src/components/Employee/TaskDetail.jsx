@@ -13,6 +13,9 @@ const TaskDetail = () => {
   const [assignedEmployees, setAssignedEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState(null);
+  const [pendingHoldReason, setPendingHoldReason] = useState("");
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -21,6 +24,7 @@ const TaskDetail = () => {
         if (taskDoc.exists()) {
           const taskData = { id: taskDoc.id, ...taskDoc.data() };
           setTask(taskData);
+          setPendingStatus(taskData.status);
 
           // Fetch employee details
           const employeePromises = taskData.assignedTo.map((empId) =>
@@ -42,35 +46,47 @@ const TaskDetail = () => {
     fetchTask();
   }, [taskId]);
 
-  const handleStatusChange = async (newStatus) => {
-    if (updating) return;
+  const handleStatusChange = (newStatus) => {
+    if (task.approved) return;
 
-    let holdReason = null;
-    if (newStatus === "hold") {
-      holdReason = prompt("Please enter reason for holding this task:");
-      if (!holdReason) return;
+    setPendingStatus(newStatus);
+    setHasChanges(true);
+
+    // Clear hold reason if not selecting hold
+    if (newStatus !== "hold") {
+      setPendingHoldReason("");
+    }
+  };
+
+  const handleSave = async () => {
+    if (!hasChanges || updating) return;
+
+    // Validate hold reason if status is hold
+    if (pendingStatus === "hold" && !pendingHoldReason.trim()) {
+      alert("Please provide a reason for holding this task.");
+      return;
     }
 
     setUpdating(true);
 
     try {
       const updateData = {
-        status: newStatus,
+        status: pendingStatus,
         statusHistory: arrayUnion({
-          status: newStatus,
+          status: pendingStatus,
           changedBy: currentUser.uid,
           changedAt: new Date().toISOString(),
-          note: holdReason || `Status changed to ${newStatus}`,
+          note: pendingHoldReason || `Status changed to ${pendingStatus}`,
         }),
       };
 
-      if (newStatus === "hold") {
-        updateData.holdReason = holdReason;
+      if (pendingStatus === "hold") {
+        updateData.holdReason = pendingHoldReason;
       } else {
         updateData.holdReason = null;
       }
 
-      if (newStatus !== "complete") {
+      if (pendingStatus !== "complete") {
         updateData.approved = false;
       }
 
@@ -79,13 +95,21 @@ const TaskDetail = () => {
       // Update local state
       setTask((prev) => ({
         ...prev,
-        status: newStatus,
-        holdReason: holdReason || null,
+        status: pendingStatus,
+        holdReason: pendingHoldReason || null,
         statusHistory: [
           ...(prev.statusHistory || []),
-          updateData.statusHistory[0],
+          {
+            status: pendingStatus,
+            changedBy: currentUser.uid,
+            changedAt: new Date().toISOString(),
+            note: pendingHoldReason || `Status changed to ${pendingStatus}`,
+          },
         ],
       }));
+
+      setHasChanges(false);
+      setPendingHoldReason("");
     } catch (error) {
       console.error("Error updating status:", error);
       alert("Failed to update status");
@@ -133,7 +157,18 @@ const TaskDetail = () => {
         {/* Task Details Card */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-dimo-blue to-dimo-dark p-6">
-            <h1 className="text-2xl font-bold text-white">Task Details</h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-white">Task Details</h1>
+              {hasChanges && (
+                <button
+                  onClick={handleSave}
+                  disabled={updating}
+                  className="bg-white text-dimo-blue px-6 py-2 rounded-lg hover:bg-gray-100 transition duration-200 font-semibold disabled:opacity-50"
+                >
+                  {updating ? "Saving..." : "Save Changes"}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="p-8 space-y-6">
@@ -204,7 +239,7 @@ const TaskDetail = () => {
                 Status
               </label>
               <select
-                value={task.status}
+                value={pendingStatus}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 disabled={updating || task.approved}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none text-lg font-medium disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -221,11 +256,33 @@ const TaskDetail = () => {
               )}
             </div>
 
-            {/* Hold Reason */}
-            {task.holdReason && (
+            {/* Hold Reason Input - Only shows when status is Hold and has changes */}
+            {pendingStatus === "hold" && hasChanges && (
+              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
+                <label className="block text-sm font-medium text-yellow-800 mb-2">
+                  Reason to Hold <span className="text-red-600">*</span>
+                </label>
+                <textarea
+                  value={pendingHoldReason}
+                  onChange={(e) => setPendingHoldReason(e.target.value)}
+                  placeholder="Please explain why this task is being put on hold..."
+                  className="w-full px-4 py-3 border-2 border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none resize-none"
+                  rows="4"
+                  disabled={task.approved}
+                />
+                {!pendingHoldReason.trim() && (
+                  <p className="text-xs text-yellow-700 mt-2">
+                    ⚠ You must provide a reason before saving
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Display Current Hold Reason - Only shows saved hold reason */}
+            {task.holdReason && task.status === "hold" && !hasChanges && (
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
                 <label className="block text-sm font-medium text-yellow-800 mb-1">
-                  Reason for Hold
+                  Current Reason for Hold
                 </label>
                 <p className="text-yellow-900">{task.holdReason}</p>
               </div>
@@ -261,7 +318,7 @@ const TaskDetail = () => {
                 </label>
                 <div className="space-y-3">
                   {[...task.statusHistory]
-                    .filter((history) => history != null) // Filter out null/undefined
+                    .filter((history) => history != null)
                     .reverse()
                     .map((history, index) => (
                       <div

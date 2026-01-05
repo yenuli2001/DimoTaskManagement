@@ -79,7 +79,7 @@ const EmployeeDashboard = () => {
                 <div className="p-6">
                   <div className="flex items-center justify-between text-sm text-gray-600">
                     <span>{project.employees?.length || 0} Team Members</span>
-                    <span className="text-dimo-blue">View Tasks →</span>
+                    <span className="text-dimo-blue text-sm font-medium">View Tasks →</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-4">
                     Created: {new Date(project.createdAt).toLocaleDateString()}

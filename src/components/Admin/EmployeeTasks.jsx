@@ -22,6 +22,8 @@ const EmployeeTasks = () => {
   const [project, setProject] = useState(null);
   const [employee, setEmployee] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   useEffect(() => {
     // Fetch project details
@@ -114,6 +116,11 @@ const EmployeeTasks = () => {
     }
   };
 
+  const handleEditTask = (task) => {
+    setEditingTask(task);
+    setShowEditModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -147,46 +154,38 @@ const EmployeeTasks = () => {
           </button>
         </div>
 
-        {/* Tasks List */}
+        {/* Tasks Cards */}
         {tasks.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <p className="text-gray-500 text-lg">No tasks assigned yet</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Task Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Target Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {tasks.map((task) => (
-                    <tr key={task.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {task.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          Created:{" "}
-                          {new Date(task.createdAt).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 overflow-hidden"
+              >
+                {/* Card Header */}
+                <div className="bg-gradient-to-r from-dimo-blue to-dimo-dark p-4">
+                  <h3 className="text-lg font-bold text-white truncate">
+                    {task.name}
+                  </h3>
+                  <p className="text-xs text-gray-200 mt-1">
+                    Created: {new Date(task.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-4 space-y-3">
+                  {/* Status */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                      Status:
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
                           ${
                             task.status === "complete"
                               ? "bg-green-100 text-green-800"
@@ -208,63 +207,113 @@ const EmployeeTasks = () => {
                               : ""
                           }
                         `}
-                        >
-                          {task.status.replace("-", " ").toUpperCase()}
+                      >
+                        {task.status.replace("-", " ").toUpperCase()}
+                      </span>
+                      {task.approved && (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          ✓
                         </span>
-                        {task.approved && (
-                          <span className="ml-2 px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            ✓ Approved
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(task.targetDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        {task.status === "complete" && !task.approved && (
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleApprove(task.id)}
-                              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleReject(task.id)}
-                              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        )}
-                        {task.approved && (
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Hold Reason - Only if task is on hold */}
+                  {task.status === "hold" && task.holdReason && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-xs font-medium text-yellow-800 mb-1">
+                        Reason for Hold:
+                      </p>
+                      <p className="text-sm text-yellow-700 italic">
+                        {task.holdReason}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Target Date */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                      Target Date:
+                    </span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(task.targetDate).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-200 pt-3">
+                    {/* Actions */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Edit Button - Always visible */}
+                      <button
+                        onClick={() => handleEditTask(task)}
+                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded hover:bg-blue-50 transition text-sm"
+                        title="Edit task"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        <span>Edit</span>
+                      </button>
+
+                      {/* Approve/Reject buttons for complete tasks */}
+                      {task.status === "complete" && !task.approved && (
+                        <>
                           <button
-                            onClick={() => handleDeleteTask(task.id, task.name)}
-                            className="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition"
-                            title="Delete task"
+                            onClick={() => handleApprove(task.id)}
+                            className="flex-1 bg-green-500 text-white px-3 py-1.5 rounded hover:bg-green-600 transition text-sm font-medium"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
+                            Approve
                           </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          <button
+                            onClick={() => handleReject(task.id)}
+                            className="flex-1 bg-red-500 text-white px-3 py-1.5 rounded hover:bg-red-600 transition text-sm font-medium"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+
+                      {/* Delete button for approved tasks */}
+                      {task.approved && (
+                        <button
+                          onClick={() => handleDeleteTask(task.id, task.name)}
+                          className="flex items-center space-x-1 text-red-600 hover:text-red-800 px-3 py-1.5 rounded hover:bg-red-50 transition text-sm"
+                          title="Delete task"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                          <span>Delete</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -278,13 +327,217 @@ const EmployeeTasks = () => {
           onClose={() => setShowCreateModal(false)}
         />
       )}
+
+      {/* Edit Task Modal */}
+      {showEditModal && editingTask && (
+        <EditTaskModal
+          task={editingTask}
+          projectId={projectId}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingTask(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const EditTaskModal = ({ task, projectId, onClose }) => {
+  // Format date from ISO string to YYYY-MM-DD
+  const formatDateForInput = (isoString) => {
+    return new Date(isoString).toISOString().split('T')[0];
+  };
+
+  const [taskData, setTaskData] = useState({
+    name: task.name,
+    createdDate: formatDateForInput(task.createdAt),
+    targetDate: task.targetDate,
+  });
+  const [loading, setLoading] = useState(false);
+  const [allEmployees, setAllEmployees] = useState([]);
+  const [selectedEmployees, setSelectedEmployees] = useState(task.assignedTo || []);
+
+  useEffect(() => {
+    // Fetch project to get all employees
+    const fetchProject = async () => {
+      const projectDoc = await getDoc(doc(db, "projects", projectId));
+      if (projectDoc.exists()) {
+        const projectData = projectDoc.data();
+        setAllEmployees(projectData.employees || []);
+      }
+    };
+    fetchProject();
+  }, [projectId]);
+
+  const toggleEmployee = (empId) => {
+    setSelectedEmployees((prev) => {
+      if (prev.includes(empId)) {
+        return prev.filter((id) => id !== empId);
+      } else {
+        return [...prev, empId];
+      }
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (selectedEmployees.length === 0) {
+      alert("Please select at least one employee");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Convert the selected creation date to ISO string format
+      const createdAtISO = new Date(taskData.createdDate).toISOString();
+
+      await updateDoc(doc(db, "tasks", task.id), {
+        name: taskData.name,
+        createdAt: createdAtISO,
+        targetDate: taskData.targetDate,
+        assignedTo: selectedEmployees,
+        statusHistory: arrayUnion({
+          status: "edited",
+          changedBy: "admin",
+          changedAt: new Date().toISOString(),
+          note: "Task details updated by admin",
+        }),
+      });
+      onClose();
+    } catch (error) {
+      console.error("Error updating task:", error);
+      alert("Failed to update task");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-dimo-blue text-white p-6 rounded-t-lg">
+          <h2 className="text-2xl font-bold">Edit Task</h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Task Name
+            </label>
+            <input
+              type="text"
+              value={taskData.name}
+              onChange={(e) =>
+                setTaskData({ ...taskData, name: e.target.value })
+              }
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none"
+              placeholder="Enter task name"
+              required
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Assign to Employees
+            </label>
+            <div className="border border-gray-300 rounded-lg max-h-48 overflow-y-auto">
+              {allEmployees.map((emp) => (
+                <div
+                  key={emp.id}
+                  onClick={() => toggleEmployee(emp.id)}
+                  className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-200 last:border-b-0 ${
+                    selectedEmployees.includes(emp.id) ? "bg-blue-50" : ""
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{emp.name}</span>
+                    <div
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        selectedEmployees.includes(emp.id)
+                          ? "bg-dimo-blue border-dimo-blue"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {selectedEmployees.includes(emp.id) && (
+                        <span className="text-white text-xs">✓</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {selectedEmployees.length} employee(s) selected
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Creation Date
+              </label>
+              <input
+                type="date"
+                value={taskData.createdDate}
+                onChange={(e) =>
+                  setTaskData({ ...taskData, createdDate: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Target Date
+              </label>
+              <input
+                type="date"
+                value={taskData.targetDate}
+                onChange={(e) =>
+                  setTaskData({ ...taskData, targetDate: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || selectedEmployees.length === 0}
+              className="px-6 py-3 bg-dimo-blue text-white rounded-lg hover:bg-dimo-dark transition disabled:opacity-50"
+            >
+              {loading ? "Updating..." : "Update Task"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
 
 const CreateTaskModal = ({ projectId, employeeId, employeeName, onClose }) => {
+  // Get today's date in YYYY-MM-DD format for default values
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
   const [taskData, setTaskData] = useState({
     name: "",
+    createdDate: getTodayDate(),
     targetDate: "",
   });
   const [loading, setLoading] = useState(false);
@@ -308,11 +561,14 @@ const CreateTaskModal = ({ projectId, employeeId, employeeName, onClose }) => {
     setLoading(true);
 
     try {
+      // Convert the selected date to ISO string format
+      const createdAtISO = new Date(taskData.createdDate).toISOString();
+
       await addDoc(collection(db, "tasks"), {
         name: taskData.name,
         projectId,
         assignedTo: selectedEmployees,
-        createdAt: new Date().toISOString(),
+        createdAt: createdAtISO,
         targetDate: taskData.targetDate,
         status: "not-started",
         approved: false,
@@ -322,7 +578,7 @@ const CreateTaskModal = ({ projectId, employeeId, employeeName, onClose }) => {
           {
             status: "not-started",
             changedBy: "admin",
-            changedAt: new Date().toISOString(),
+            changedAt: createdAtISO,
             note: "Task created",
           },
         ],
@@ -348,7 +604,7 @@ const CreateTaskModal = ({ projectId, employeeId, employeeName, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="bg-dimo-blue text-white p-6 rounded-t-lg">
           <h2 className="text-2xl font-bold">Create New Task</h2>
         </div>
@@ -402,19 +658,36 @@ const CreateTaskModal = ({ projectId, employeeId, employeeName, onClose }) => {
             </div>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Target Date
-            </label>
-            <input
-              type="date"
-              value={taskData.targetDate}
-              onChange={(e) =>
-                setTaskData({ ...taskData, targetDate: e.target.value })
-              }
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Creation Date
+              </label>
+              <input
+                type="date"
+                value={taskData.createdDate}
+                onChange={(e) =>
+                  setTaskData({ ...taskData, createdDate: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Target Date
+              </label>
+              <input
+                type="date"
+                value={taskData.targetDate}
+                onChange={(e) =>
+                  setTaskData({ ...taskData, targetDate: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none"
+                required
+              />
+            </div>
           </div>
 
           <div className="flex justify-end space-x-4">
