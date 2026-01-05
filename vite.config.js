@@ -13,7 +13,10 @@ export default defineConfig({
   server: {
     hmr: {
       overlay: true
-    }
+    },
+    host: '0.0.0.0', // Listen on all network interfaces
+    port: 5173,      // Default Vite port (you can change this)
+    strictPort: true, // Fail if port is already in use
   }
 })
 
