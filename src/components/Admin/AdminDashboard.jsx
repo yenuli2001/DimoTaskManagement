@@ -7,6 +7,7 @@ import {
   addDoc,
   doc,
   getDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { useAuth } from "../../context/AuthContext";
@@ -41,6 +42,23 @@ const AdminDashboard = () => {
 
     return unsubscribe;
   }, [currentUser]);
+
+  const handleDeleteProject = async (e, projectId, projectName) => {
+    e.stopPropagation(); // Prevent card click navigation
+    
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${projectName}"? This action cannot be undone.`
+    );
+    
+    if (confirmDelete) {
+      try {
+        await deleteDoc(doc(db, "projects", projectId));
+      } catch (error) {
+        console.error("Error deleting project:", error);
+        alert("Failed to delete project");
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -82,10 +100,32 @@ const AdminDashboard = () => {
               <div
                 key={project.id}
                 onClick={() => navigate(`/admin/project/${project.id}`)}
-                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 cursor-pointer overflow-hidden"
+                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 cursor-pointer overflow-hidden relative"
               >
+                {/* Delete Button */}
+                <button
+                  onClick={(e) => handleDeleteProject(e, project.id, project.name)}
+                  className="absolute top-2 right-2 z-10 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-200 shadow-lg"
+                  title="Delete project"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+
                 <div className="bg-gradient-to-r from-dimo-blue to-dimo-dark p-6">
-                  <h3 className="text-xl font-bold text-white">
+                  <h3 className="text-xl font-bold text-white pr-8">
                     {project.name}
                   </h3>
                 </div>

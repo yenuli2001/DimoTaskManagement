@@ -11,19 +11,10 @@ export default defineConfig({
     }
   },
   server: {
+    host: '0.0.0.0',  // Add this to allow network access
+    port: 5173,        // Add this to specify port
     hmr: {
       overlay: true
-    },
-    host: '0.0.0.0', // Listen on all network interfaces
-    port: 5173,      // Default Vite port (you can change this)
-    strictPort: true, // Fail if port is already in use
+    }
   }
 })
-
-// import { defineConfig } from 'vite'
-// import react from '@vitejs/plugin-react'
-
-// // https://vite.dev/config/
-// export default defineConfig({
-//   plugins: [react()],
-// })

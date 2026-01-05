@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion, collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import Navbar from "../Layout/Navbar";
 
@@ -9,23 +9,88 @@ const ProjectDetail = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
+  const [addingEmployees, setAddingEmployees] = useState(false);
+
+  const fetchProject = async () => {
+    try {
+      const projectDoc = await getDoc(doc(db, "projects", projectId));
+      if (projectDoc.exists()) {
+        setProject({ id: projectDoc.id, ...projectDoc.data() });
+      }
+    } catch (error) {
+      console.error("Error fetching project:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        const projectDoc = await getDoc(doc(db, "projects", projectId));
-        if (projectDoc.exists()) {
-          setProject({ id: projectDoc.id, ...projectDoc.data() });
-        }
-      } catch (error) {
-        console.error("Error fetching project:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProject();
   }, [projectId]);
+
+  const fetchAvailableEmployees = async () => {
+    try {
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      const users = usersSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Filter out employees already in the project and non-employees
+      const availableEmployees = users.filter(
+        (user) =>
+          user.role === "employee" &&
+          !project?.employees?.some((emp) => emp.id === user.id)
+      );
+
+      setAllUsers(availableEmployees);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
+  const handleOpenModal = () => {
+    setShowAddEmployeeModal(true);
+    fetchAvailableEmployees();
+  };
+
+  const toggleEmployee = (employee) => {
+    setSelectedEmployees((prev) => {
+      const exists = prev.find((emp) => emp.id === employee.id);
+      if (exists) {
+        return prev.filter((emp) => emp.id !== employee.id);
+      } else {
+        return [...prev, { id: employee.id, name: employee.name, email: employee.email }];
+      }
+    });
+  };
+
+  const handleAddEmployees = async () => {
+    if (selectedEmployees.length === 0) return;
+
+    setAddingEmployees(true);
+    try {
+      const projectRef = doc(db, "projects", projectId);
+      await updateDoc(projectRef, {
+        employees: arrayUnion(...selectedEmployees),
+      });
+
+      // Refresh project data
+      await fetchProject();
+      
+      // Reset and close modal
+      setSelectedEmployees([]);
+      setShowAddEmployeeModal(false);
+    } catch (error) {
+      console.error("Error adding employees:", error);
+      alert("Failed to add employees");
+    } finally {
+      setAddingEmployees(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -71,14 +136,29 @@ const ProjectDetail = () => {
           </p>
         </div>
 
-        {/* Employees Section */}
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Team Members</h2>
+        {/* Employees Section Header with Add Button */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Team Members</h2>
+          <button
+            onClick={handleOpenModal}
+            className="bg-dimo-blue text-white px-4 py-2 rounded-lg hover:bg-dimo-dark transition duration-200 flex items-center space-x-2"
+          >
+            <span className="text-xl">+</span>
+            <span>Add Employees</span>
+          </button>
+        </div>
 
         {project.employees?.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <p className="text-gray-500 text-lg">
+            <p className="text-gray-500 text-lg mb-4">
               No employees assigned to this project
             </p>
+            <button
+              onClick={handleOpenModal}
+              className="bg-dimo-blue text-white px-6 py-3 rounded-lg hover:bg-dimo-dark transition duration-200"
+            >
+              Add Employees
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -115,6 +195,88 @@ const ProjectDetail = () => {
           </div>
         )}
       </div>
+
+      {/* Add Employee Modal */}
+      {showAddEmployeeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-dimo-blue text-white p-6 rounded-t-lg">
+              <h2 className="text-2xl font-bold">Add Employees to Project</h2>
+            </div>
+
+            <div className="p-6">
+              {allUsers.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No available employees to add
+                </div>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600">
+                      Select employees to add to this project ({selectedEmployees.length} selected)
+                    </p>
+                  </div>
+
+                  <div className="border border-gray-300 rounded-lg max-h-96 overflow-y-auto">
+                    {allUsers.map((employee) => {
+                      const isSelected = selectedEmployees.some((emp) => emp.id === employee.id);
+                      return (
+                        <div
+                          key={employee.id}
+                          onClick={() => toggleEmployee(employee)}
+                          className={`p-4 cursor-pointer hover:bg-gray-50 border-b border-gray-200 last:border-b-0 transition ${
+                            isSelected ? "bg-blue-50" : ""
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {employee.name}
+                              </p>
+                              <p className="text-xs text-gray-500">{employee.email}</p>
+                            </div>
+                            <div
+                              className={`w-6 h-6 rounded border-2 flex items-center justify-center transition ${
+                                isSelected
+                                  ? "bg-dimo-blue border-dimo-blue"
+                                  : "border-gray-300"
+                              }`}
+                            >
+                              {isSelected && (
+                                <span className="text-white text-sm">✓</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-end space-x-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddEmployeeModal(false);
+                    setSelectedEmployees([]);
+                  }}
+                  className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddEmployees}
+                  disabled={addingEmployees || selectedEmployees.length === 0}
+                  className="px-6 py-3 bg-dimo-blue text-white rounded-lg hover:bg-dimo-dark transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {addingEmployees ? "Adding..." : `Add ${selectedEmployees.length} Employee${selectedEmployees.length !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
