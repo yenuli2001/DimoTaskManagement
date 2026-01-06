@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
-import dimoLogo from '../../assets/Diesel_&_Motor_Engineering_logo.jpg'; 
+import dimoLogo from '../../assets/WURKAI.jpeg'; 
 
 const Navbar = () => {
   const { logout, currentUser, userRole } = useAuth();
