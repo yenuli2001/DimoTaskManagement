@@ -119,13 +119,25 @@ const ProjectDetail = () => {
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
+        {/* Back Button with Icon */}
         <button
           onClick={() => navigate("/admin")}
-          className="mb-6 text-dimo-blue hover:text-dimo-dark flex items-center space-x-2"
+          className="mb-6 inline-flex items-center text-dimo-blue hover:text-dimo-dark transition-colors duration-200 group"
         >
-          <span>←</span>
-          <span>Back to Dashboard</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 transform group-hover:-translate-x-1 transition-transform duration-200"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
         </button>
 
         {/* Project Header */}

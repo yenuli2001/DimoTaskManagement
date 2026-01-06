@@ -16,6 +16,8 @@ const TaskDetail = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [pendingStatus, setPendingStatus] = useState(null);
   const [pendingHoldReason, setPendingHoldReason] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [hasRemarksChanges, setHasRemarksChanges] = useState(false);
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -25,6 +27,7 @@ const TaskDetail = () => {
           const taskData = { id: taskDoc.id, ...taskDoc.data() };
           setTask(taskData);
           setPendingStatus(taskData.status);
+          setRemarks(taskData.remarks || "");
 
           // Fetch employee details
           const employeePromises = taskData.assignedTo.map((empId) =>
@@ -46,6 +49,38 @@ const TaskDetail = () => {
     fetchTask();
   }, [taskId]);
 
+  // Helper function to get rejection date from status history
+  const getRejectionDate = () => {
+    if (!task || !task.statusHistory) return null;
+    
+    // Find the most recent rejection in status history
+    const rejections = task.statusHistory.filter(
+      (history) => history.status === "rejected"
+    );
+    
+    if (rejections.length === 0) return null;
+    
+    // Get the most recent rejection
+    const latestRejection = rejections[rejections.length - 1];
+    return latestRejection.changedAt;
+  };
+
+  // Helper function to get approval date from status history
+  const getApprovalDate = () => {
+    if (!task || !task.statusHistory) return null;
+    
+    // Find the most recent approval in status history
+    const approvals = task.statusHistory.filter(
+      (history) => history.status === "approved"
+    );
+    
+    if (approvals.length === 0) return null;
+    
+    // Get the most recent approval
+    const latestApproval = approvals[approvals.length - 1];
+    return latestApproval.changedAt;
+  };
+
   const handleStatusChange = (newStatus) => {
     if (task.approved) return;
 
@@ -58,11 +93,16 @@ const TaskDetail = () => {
     }
   };
 
+  const handleRemarksChange = (e) => {
+    setRemarks(e.target.value);
+    setHasRemarksChanges(true);
+  };
+
   const handleSave = async () => {
-    if (!hasChanges || updating) return;
+    if ((!hasChanges && !hasRemarksChanges) || updating) return;
 
     // Validate hold reason if status is hold
-    if (pendingStatus === "hold" && !pendingHoldReason.trim()) {
+    if (hasChanges && pendingStatus === "hold" && !pendingHoldReason.trim()) {
       alert("Please provide a reason for holding this task.");
       return;
     }
@@ -70,24 +110,34 @@ const TaskDetail = () => {
     setUpdating(true);
 
     try {
-      const updateData = {
-        status: pendingStatus,
-        statusHistory: arrayUnion({
+      const updateData = {};
+
+      // Update status if changed
+      if (hasChanges) {
+        updateData.status = pendingStatus;
+        updateData.statusHistory = arrayUnion({
           status: pendingStatus,
           changedBy: currentUser.uid,
           changedAt: new Date().toISOString(),
           note: pendingHoldReason || `Status changed to ${pendingStatus}`,
-        }),
-      };
+        });
 
-      if (pendingStatus === "hold") {
-        updateData.holdReason = pendingHoldReason;
-      } else {
-        updateData.holdReason = null;
+        if (pendingStatus === "hold") {
+          updateData.holdReason = pendingHoldReason;
+        } else {
+          updateData.holdReason = null;
+        }
+
+        if (pendingStatus !== "complete") {
+          updateData.approved = false;
+        }
       }
 
-      if (pendingStatus !== "complete") {
-        updateData.approved = false;
+      // Update remarks if changed
+      if (hasRemarksChanges) {
+        updateData.remarks = remarks;
+        updateData.remarksUpdatedAt = new Date().toISOString();
+        updateData.remarksUpdatedBy = currentUser.uid;
       }
 
       await updateDoc(doc(db, "tasks", taskId), updateData);
@@ -95,24 +145,32 @@ const TaskDetail = () => {
       // Update local state
       setTask((prev) => ({
         ...prev,
-        status: pendingStatus,
-        holdReason: pendingHoldReason || null,
-        statusHistory: [
-          ...(prev.statusHistory || []),
-          {
-            status: pendingStatus,
-            changedBy: currentUser.uid,
-            changedAt: new Date().toISOString(),
-            note: pendingHoldReason || `Status changed to ${pendingStatus}`,
-          },
-        ],
+        ...(hasChanges && {
+          status: pendingStatus,
+          holdReason: pendingHoldReason || null,
+          statusHistory: [
+            ...(prev.statusHistory || []),
+            {
+              status: pendingStatus,
+              changedBy: currentUser.uid,
+              changedAt: new Date().toISOString(),
+              note: pendingHoldReason || `Status changed to ${pendingStatus}`,
+            },
+          ],
+        }),
+        ...(hasRemarksChanges && {
+          remarks: remarks,
+          remarksUpdatedAt: new Date().toISOString(),
+          remarksUpdatedBy: currentUser.uid,
+        }),
       }));
 
       setHasChanges(false);
+      setHasRemarksChanges(false);
       setPendingHoldReason("");
     } catch (error) {
-      console.error("Error updating status:", error);
-      alert("Failed to update status");
+      console.error("Error updating task:", error);
+      alert("Failed to update task");
     } finally {
       setUpdating(false);
     }
@@ -145,13 +203,25 @@ const TaskDetail = () => {
       <Navbar />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
+        {/* Back Button with Icon */}
         <button
           onClick={() => navigate(-1)}
-          className="mb-6 text-dimo-blue hover:text-dimo-dark flex items-center space-x-2"
+          className="mb-6 inline-flex items-center text-dimo-blue hover:text-dimo-dark transition-colors duration-200 group"
         >
-          <span>←</span>
-          <span>Back</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 transform group-hover:-translate-x-1 transition-transform duration-200"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
         </button>
 
         {/* Task Details Card */}
@@ -159,7 +229,7 @@ const TaskDetail = () => {
           <div className="bg-gradient-to-r from-dimo-blue to-dimo-dark p-6">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold text-white">Task Details</h1>
-              {hasChanges && (
+              {(hasChanges || hasRemarksChanges) && (
                 <button
                   onClick={handleSave}
                   disabled={updating}
@@ -294,60 +364,108 @@ const TaskDetail = () => {
                 <label className="block text-sm font-medium text-red-800 mb-1">
                   Rejection Reason
                 </label>
-                <p className="text-red-900">{task.rejectionReason}</p>
+                <p className="text-red-900 mb-3">{task.rejectionReason}</p>
+                {getRejectionDate() && (
+                  <div className="flex items-center space-x-2 pt-2 border-t border-red-200">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 text-red-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p className="text-sm text-red-700">
+                      Rejected on: {new Date(getRejectionDate()).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Approval Status */}
             {task.approved && (
               <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-2xl">✓</span>
+                <div className="flex items-center space-x-2 mb-3">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
                   <span className="text-lg font-semibold text-green-800">
                     Task Approved by Admin
                   </span>
                 </div>
+                {getApprovalDate() && (
+                  <div className="flex items-center space-x-2 pt-2 border-t border-green-200">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 text-green-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p className="text-sm text-green-700">
+                      Approved on: {new Date(getApprovalDate()).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Status History */}
-            {task.statusHistory && task.statusHistory.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-3">
-                  Status History
-                </label>
-                <div className="space-y-3">
-                  {[...task.statusHistory]
-                    .filter((history) => history != null)
-                    .reverse()
-                    .map((history, index) => (
-                      <div
-                        key={index}
-                        className="bg-gray-50 border border-gray-200 rounded-lg p-4"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {history?.status?.replace("-", " ").toUpperCase() ||
-                                "UNKNOWN"}
-                            </p>
-                            {history?.note && (
-                              <p className="text-sm text-gray-600 mt-1">
-                                {history.note}
-                              </p>
-                            )}
-                          </div>
-                          <span className="text-xs text-gray-500">
-                            {history?.changedAt
-                              ? new Date(history.changedAt).toLocaleString()
-                              : "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
+            {/* Remarks Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-2">
+                Remarks / Progress Notes
+              </label>
+              <textarea
+                value={remarks}
+                onChange={handleRemarksChange}
+                placeholder="Add notes about task progress, updates, or any relevant information..."
+                disabled={task.approved}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                rows="6"
+              />
+              {task.remarksUpdatedAt && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Last updated: {new Date(task.remarksUpdatedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -23,7 +23,9 @@ const EmployeeTasks = () => {
   const [employee, setEmployee] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [rejectingTaskId, setRejectingTaskId] = useState(null);
 
   useEffect(() => {
     // Fetch project details
@@ -63,6 +65,38 @@ const EmployeeTasks = () => {
     return unsubscribe;
   }, [projectId, employeeId]);
 
+  // Helper function to get rejection date from status history
+  const getRejectionDate = (task) => {
+    if (!task.statusHistory) return null;
+    
+    // Find the most recent rejection in status history
+    const rejections = task.statusHistory.filter(
+      (history) => history.status === "rejected"
+    );
+    
+    if (rejections.length === 0) return null;
+    
+    // Get the most recent rejection
+    const latestRejection = rejections[rejections.length - 1];
+    return latestRejection.changedAt;
+  };
+
+  // Helper function to get approval date from status history
+  const getApprovalDate = (task) => {
+    if (!task.statusHistory) return null;
+    
+    // Find the most recent approval in status history
+    const approvals = task.statusHistory.filter(
+      (history) => history.status === "approved"
+    );
+    
+    if (approvals.length === 0) return null;
+    
+    // Get the most recent approval
+    const latestApproval = approvals[approvals.length - 1];
+    return latestApproval.changedAt;
+  };
+
   const handleApprove = async (taskId) => {
     try {
       await updateDoc(doc(db, "tasks", taskId), {
@@ -80,25 +114,9 @@ const EmployeeTasks = () => {
     }
   };
 
-  const handleReject = async (taskId) => {
-    const reason = prompt("Please enter rejection reason:");
-    if (reason) {
-      try {
-        await updateDoc(doc(db, "tasks", taskId), {
-          status: "not-started",
-          approved: false,
-          rejectionReason: reason,
-          statusHistory: arrayUnion({
-            status: "rejected",
-            changedBy: "admin",
-            changedAt: new Date().toISOString(),
-            note: `Rejected: ${reason}`,
-          }),
-        });
-      } catch (error) {
-        console.error("Error rejecting task:", error);
-      }
-    }
+  const handleRejectClick = (taskId) => {
+    setRejectingTaskId(taskId);
+    setShowRejectModal(true);
   };
 
   const handleDeleteTask = async (taskId, taskName) => {
@@ -126,13 +144,25 @@ const EmployeeTasks = () => {
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
+        {/* Back Button with Icon */}
         <button
           onClick={() => navigate(`/admin/project/${projectId}`)}
-          className="mb-6 text-dimo-blue hover:text-dimo-dark flex items-center space-x-2"
+          className="mb-6 inline-flex items-center text-dimo-blue hover:text-dimo-dark transition-colors duration-200 group"
         >
-          <span>←</span>
-          <span>Back to Project</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 transform group-hover:-translate-x-1 transition-transform duration-200"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
         </button>
 
         {/* Header */}
@@ -225,6 +255,34 @@ const EmployeeTasks = () => {
                     </div>
                   </div>
 
+                  {/* Approval Info - Only if task is approved */}
+                  {task.approved && getApprovalDate(task) && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center space-x-2">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 text-green-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <p className="text-xs font-medium text-green-800">
+                          Approved
+                        </p>
+                      </div>
+                      <p className="text-xs text-green-700 mt-1">
+                        {new Date(getApprovalDate(task)).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Hold Reason - Only if task is on hold */}
                   {task.status === "hold" && task.holdReason && (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
@@ -234,6 +292,40 @@ const EmployeeTasks = () => {
                       <p className="text-sm text-yellow-700 italic">
                         {task.holdReason}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Rejection Reason - Only if task has been rejected */}
+                  {task.rejectionReason && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-xs font-medium text-red-800 mb-1">
+                        Rejection Reason:
+                      </p>
+                      <p className="text-sm text-red-700 mb-2">
+                        {task.rejectionReason}
+                      </p>
+                      {getRejectionDate(task) && (
+                        <p className="text-xs text-red-600">
+                          Rejected on: {new Date(getRejectionDate(task)).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Remarks - Only if remarks exist */}
+                  {task.remarks && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-xs font-medium text-blue-800 mb-1">
+                        Remarks:
+                      </p>
+                      <p className="text-sm text-blue-900 line-clamp-3">
+                        {task.remarks}
+                      </p>
+                      {task.remarks.length > 100 && (
+                        <p className="text-xs text-blue-600 mt-1 italic">
+                          Click to view full details
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -284,7 +376,7 @@ const EmployeeTasks = () => {
                             Approve
                           </button>
                           <button
-                            onClick={() => handleReject(task.id)}
+                            onClick={() => handleRejectClick(task.id)}
                             className="flex-1 bg-red-500 text-white px-3 py-1.5 rounded hover:bg-red-600 transition text-sm font-medium"
                           >
                             Reject
@@ -346,6 +438,101 @@ const EmployeeTasks = () => {
           }}
         />
       )}
+
+      {/* Reject Task Modal */}
+      {showRejectModal && rejectingTaskId && (
+        <RejectTaskModal
+          taskId={rejectingTaskId}
+          onClose={() => {
+            setShowRejectModal(false);
+            setRejectingTaskId(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const RejectTaskModal = ({ taskId, onClose }) => {
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!rejectionReason.trim()) {
+      alert("Please provide a rejection reason");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await updateDoc(doc(db, "tasks", taskId), {
+        status: "not-started",
+        approved: false,
+        rejectionReason: rejectionReason,
+        statusHistory: arrayUnion({
+          status: "rejected",
+          changedBy: "admin",
+          changedAt: new Date().toISOString(),
+          note: `Rejected: ${rejectionReason}`,
+        }),
+      });
+      onClose();
+    } catch (error) {
+      console.error("Error rejecting task:", error);
+      alert("Failed to reject task");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-md w-full">
+        <div className="bg-red-500 text-white p-6 rounded-t-lg">
+          <h2 className="text-2xl font-bold">Reject Task</h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Rejection Reason <span className="text-red-600">*</span>
+            </label>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Please provide a clear reason for rejecting this task..."
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none resize-none"
+              rows="5"
+              required
+            />
+            {!rejectionReason.trim() && (
+              <p className="text-xs text-gray-500 mt-2">
+                A detailed rejection reason helps the employee understand what needs to be corrected.
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !rejectionReason.trim()}
+              className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition disabled:opacity-50"
+            >
+              {loading ? "Rejecting..." : "Reject Task"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
