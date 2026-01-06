@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { useAuth } from "../../context/AuthContext";
 import Navbar from "../Layout/Navbar";
@@ -16,8 +16,10 @@ const TaskDetail = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [pendingStatus, setPendingStatus] = useState(null);
   const [pendingHoldReason, setPendingHoldReason] = useState("");
-  const [remarks, setRemarks] = useState("");
-  const [hasRemarksChanges, setHasRemarksChanges] = useState(false);
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -27,7 +29,7 @@ const TaskDetail = () => {
           const taskData = { id: taskDoc.id, ...taskDoc.data() };
           setTask(taskData);
           setPendingStatus(taskData.status);
-          setRemarks(taskData.remarks || "");
+          setMessages(taskData.remarksChat || []);
 
           // Fetch employee details
           const employeePromises = taskData.assignedTo.map((empId) =>
@@ -49,18 +51,36 @@ const TaskDetail = () => {
     fetchTask();
   }, [taskId]);
 
+  // Listen to real-time chat updates
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, "tasks", taskId), (doc) => {
+      if (doc.exists()) {
+        const taskData = doc.data();
+        setMessages(taskData.remarksChat || []);
+        setTask((prev) => ({ ...prev, ...taskData }));
+      }
+    });
+
+    return unsubscribe;
+  }, [taskId]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
   // Helper function to get rejection date from status history
   const getRejectionDate = () => {
     if (!task || !task.statusHistory) return null;
     
-    // Find the most recent rejection in status history
     const rejections = task.statusHistory.filter(
       (history) => history.status === "rejected"
     );
     
     if (rejections.length === 0) return null;
     
-    // Get the most recent rejection
     const latestRejection = rejections[rejections.length - 1];
     return latestRejection.changedAt;
   };
@@ -69,14 +89,12 @@ const TaskDetail = () => {
   const getApprovalDate = () => {
     if (!task || !task.statusHistory) return null;
     
-    // Find the most recent approval in status history
     const approvals = task.statusHistory.filter(
       (history) => history.status === "approved"
     );
     
     if (approvals.length === 0) return null;
     
-    // Get the most recent approval
     const latestApproval = approvals[approvals.length - 1];
     return latestApproval.changedAt;
   };
@@ -93,13 +111,37 @@ const TaskDetail = () => {
     }
   };
 
-  const handleRemarksChange = (e) => {
-    setRemarks(e.target.value);
-    setHasRemarksChanges(true);
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    
+    if (!message.trim() || task.approved) return;
+
+    setSending(true);
+
+    try {
+      const newMessage = {
+        text: message.trim(),
+        sentBy: currentUser.displayName || currentUser.email || "Employee",
+        sentById: currentUser.uid,
+        senderRole: "employee",
+        sentAt: new Date().toISOString(),
+      };
+
+      await updateDoc(doc(db, "tasks", taskId), {
+        remarksChat: arrayUnion(newMessage),
+      });
+
+      setMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+      alert("Failed to send message");
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleSave = async () => {
-    if ((!hasChanges && !hasRemarksChanges) || updating) return;
+    if (!hasChanges || updating) return;
 
     // Validate hold reason if status is hold
     if (hasChanges && pendingStatus === "hold" && !pendingHoldReason.trim()) {
@@ -133,40 +175,25 @@ const TaskDetail = () => {
         }
       }
 
-      // Update remarks if changed
-      if (hasRemarksChanges) {
-        updateData.remarks = remarks;
-        updateData.remarksUpdatedAt = new Date().toISOString();
-        updateData.remarksUpdatedBy = currentUser.uid;
-      }
-
       await updateDoc(doc(db, "tasks", taskId), updateData);
 
       // Update local state
       setTask((prev) => ({
         ...prev,
-        ...(hasChanges && {
-          status: pendingStatus,
-          holdReason: pendingHoldReason || null,
-          statusHistory: [
-            ...(prev.statusHistory || []),
-            {
-              status: pendingStatus,
-              changedBy: currentUser.uid,
-              changedAt: new Date().toISOString(),
-              note: pendingHoldReason || `Status changed to ${pendingStatus}`,
-            },
-          ],
-        }),
-        ...(hasRemarksChanges && {
-          remarks: remarks,
-          remarksUpdatedAt: new Date().toISOString(),
-          remarksUpdatedBy: currentUser.uid,
-        }),
+        status: pendingStatus,
+        holdReason: pendingHoldReason || null,
+        statusHistory: [
+          ...(prev.statusHistory || []),
+          {
+            status: pendingStatus,
+            changedBy: currentUser.uid,
+            changedAt: new Date().toISOString(),
+            note: pendingHoldReason || `Status changed to ${pendingStatus}`,
+          },
+        ],
       }));
 
       setHasChanges(false);
-      setHasRemarksChanges(false);
       setPendingHoldReason("");
     } catch (error) {
       console.error("Error updating task:", error);
@@ -229,7 +256,7 @@ const TaskDetail = () => {
           <div className="bg-gradient-to-r from-dimo-blue to-dimo-dark p-6">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold text-white">Task Details</h1>
-              {(hasChanges || hasRemarksChanges) && (
+              {hasChanges && (
                 <button
                   onClick={handleSave}
                   disabled={updating}
@@ -447,24 +474,165 @@ const TaskDetail = () => {
               </div>
             )}
 
-            {/* Remarks Section */}
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-2">
-                Remarks / Progress Notes
-              </label>
-              <textarea
-                value={remarks}
-                onChange={handleRemarksChange}
-                placeholder="Add notes about task progress, updates, or any relevant information..."
-                disabled={task.approved}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-dimo-blue focus:border-transparent outline-none resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                rows="6"
-              />
-              {task.remarksUpdatedAt && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Last updated: {new Date(task.remarksUpdatedAt).toLocaleString()}
+            {/* Chat Section */}
+            <div className="border-2 border-purple-200 rounded-lg overflow-hidden">
+              {/* Chat Header */}
+              <div className="bg-gradient-to-r from-purple-500 to-purple-700 text-white p-4">
+                <div className="flex items-center space-x-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  <h3 className="text-lg font-semibold">Task Discussion</h3>
+                  {messages.length > 0 && (
+                    <span className="bg-purple-800 text-white text-xs px-2 py-1 rounded-full">
+                      {messages.length}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-purple-100 mt-1">
+                  Communicate with admin about this task
                 </p>
-              )}
+              </div>
+
+              {/* Messages Area */}
+              <div className="bg-gray-50 p-4 h-96 overflow-y-auto">
+                {messages.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center text-gray-500">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-12 w-12 mx-auto mb-3 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                      <p className="font-medium">No messages yet</p>
+                      <p className="text-sm mt-1">Start a conversation about this task</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {messages.map((msg, index) => (
+                      <div
+                        key={index}
+                        className={`flex ${
+                          msg.senderRole === "employee" ? "justify-end" : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[70%] rounded-lg p-4 ${
+                            msg.senderRole === "employee"
+                              ? "bg-green-500 text-white"
+                              : "bg-white border border-gray-200 text-gray-900"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-xs font-semibold opacity-75">
+                              {msg.sentBy}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 text-xs rounded-full ${
+                                msg.senderRole === "employee"
+                                  ? "bg-green-600 text-green-100"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {msg.senderRole === "employee" ? "You" : "Admin"}
+                            </span>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap break-words">
+                            {msg.text}
+                          </p>
+                          <p
+                            className={`text-xs mt-2 ${
+                              msg.senderRole === "employee"
+                                ? "text-green-100"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {new Date(msg.sentAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
+              </div>
+
+              {/* Input Area */}
+              <form
+                onSubmit={handleSendMessage}
+                className="border-t border-gray-200 p-4 bg-white"
+              >
+                <div className="flex items-center space-x-3">
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder={
+                      task.approved
+                        ? "Chat is disabled for approved tasks"
+                        : "Type your message..."
+                    }
+                    disabled={task.approved}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    rows="2"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={sending || !message.trim() || task.approved}
+                    className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    <span>Send</span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Press Enter to send, Shift+Enter for new line
+                </p>
+              </form>
             </div>
           </div>
         </div>
