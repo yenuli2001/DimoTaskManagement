@@ -22,13 +22,15 @@ const AdminDashboard = () => {
   const [allTasks, setAllTasks] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [userName, setUserName] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
-  const [activeView, setActiveView] = useState("projects"); // "projects" or "employees"
+  const [activeView, setActiveView] = useState("projects");
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const menuRef = useRef(null);
+  const notificationRef = useRef(null);
 
   useEffect(() => {
     // Get user name
@@ -80,11 +82,14 @@ const AdminDashboard = () => {
     };
   }, [currentUser]);
 
-  // Close menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setOpenMenuId(null);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
       }
     };
 
@@ -106,6 +111,62 @@ const AdminDashboard = () => {
       hold: employeeTasks.filter((t) => t.status === "hold").length,
       pending: employeeTasks.filter((t) => t.status === "complete" && !t.approved).length,
     };
+  };
+
+  // Get tasks with unread messages
+  const getTasksWithUnreadMessages = () => {
+    return allTasks.filter((task) => {
+      if (!task.remarksChat || task.remarksChat.length === 0) return false;
+      
+      // Check if there are any unread messages from employees
+      return task.remarksChat.some(
+        (msg) => msg.senderRole === "employee" && !msg.adminRead
+      );
+    }).map((task) => {
+      const unreadCount = task.remarksChat.filter(
+        (msg) => msg.senderRole === "employee" && !msg.adminRead
+      ).length;
+      
+      const latestUnreadMsg = task.remarksChat
+        .filter((msg) => msg.senderRole === "employee" && !msg.adminRead)
+        .sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt))[0];
+
+      return {
+        ...task,
+        unreadCount,
+        latestUnreadMsg,
+      };
+    }).sort((a, b) => new Date(b.latestUnreadMsg.sentAt) - new Date(a.latestUnreadMsg.sentAt));
+  };
+
+  // Get total unread message count
+  const getTotalUnreadCount = () => {
+    return allTasks.reduce((total, task) => {
+      if (!task.remarksChat) return total;
+      
+      const unreadInTask = task.remarksChat.filter(
+        (msg) => msg.senderRole === "employee" && !msg.adminRead
+      ).length;
+      
+      return total + unreadInTask;
+    }, 0);
+  };
+
+  // Get employee info for a task
+  const getEmployeeForTask = (task) => {
+    if (!task.assignedTo || task.assignedTo.length === 0) return null;
+    const employeeId = task.assignedTo[0];
+    return employees.find((emp) => emp.id === employeeId);
+  };
+
+  // Handle notification click
+  const handleNotificationClick = async (task) => {
+    const employee = getEmployeeForTask(task);
+    if (!employee) return;
+
+    // Navigate to the employee tasks page where they can open the chat
+    navigate(`/admin/project/${task.projectId}/employee/${employee.id}`);
+    setShowNotifications(false);
   };
 
   const handleMenuToggle = (e, projectId) => {
@@ -142,19 +203,137 @@ const AdminDashboard = () => {
     navigate(`/admin/employee/${employeeId}/tasks`);
   };
 
+  const tasksWithUnread = getTasksWithUnreadMessages();
+  const totalUnread = getTotalUnreadCount();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Message */}
+        {/* Welcome Message with Notifications */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h1 className="text-3xl font-bold text-dimo-blue">
-            Welcome back, {userName}!
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Manage your projects and tasks efficiently
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-dimo-blue">
+                Welcome back, {userName}!
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Manage your projects and tasks efficiently
+              </p>
+            </div>
+            
+            {/* Notification Bell */}
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-3 bg-gray-100 rounded-full hover:bg-gray-200 transition"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-gray-700"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+                
+                {/* Notification Badge */}
+                {totalUnread > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                    {totalUnread > 9 ? "9+" : totalUnread}
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-72 sm:w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[400px] sm:max-h-[500px] overflow-hidden flex flex-col">
+                  {/* Header */}
+                  <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-purple-500 to-purple-700">
+                    <h3 className="text-lg font-semibold text-white">
+                      New Messages ({totalUnread})
+                    </h3>
+                  </div>
+
+                  {/* Notifications List */}
+                  <div className="overflow-y-auto flex-1">
+                    {tasksWithUnread.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-12 w-12 mx-auto text-gray-400 mb-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                          />
+                        </svg>
+                        <p className="text-gray-500">No new messages</p>
+                      </div>
+                    ) : (
+                      tasksWithUnread.map((task) => {
+                        const employee = getEmployeeForTask(task);
+                        return (
+                          <div
+                            key={task.id}
+                            onClick={() => handleNotificationClick(task)}
+                            className="p-4 border-b border-gray-100 hover:bg-purple-50 cursor-pointer transition"
+                          >
+                            <div className="flex items-start space-x-3">
+                              {/* Employee Avatar */}
+                              <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <span className="text-white font-semibold text-sm">
+                                  {employee?.name?.charAt(0).toUpperCase() || "?"}
+                                </span>
+                              </div>
+
+                              {/* Message Content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                  <p className="text-sm font-semibold text-gray-900 truncate">
+                                    {employee?.name || "Unknown Employee"}
+                                  </p>
+                                  <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+                                    {task.unreadCount}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500 mb-1">
+                                  Task: {task.name}
+                                </p>
+                                <p className="text-sm text-gray-700 line-clamp-2">
+                                  {task.latestUnreadMsg.text}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {new Date(task.latestUnreadMsg.sentAt).toLocaleString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Desktop View Toggle Buttons */}
@@ -177,7 +356,7 @@ const AdminDashboard = () => {
                 : "bg-white text-gray-700 hover:bg-gray-100"
             }`}
           >
-            All Employees
+            User Summary
           </button>
         </div>
 
@@ -414,7 +593,7 @@ const EmployeesView = ({
     <>
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">All Employees</h2>
+        <h2 className="text-2xl font-bold text-gray-800">User Summaries</h2>
         <p className="text-gray-600 mt-2">
           View task summaries for each employee
         </p>

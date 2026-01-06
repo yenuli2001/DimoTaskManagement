@@ -51,6 +51,36 @@ const TaskDetail = () => {
     fetchTask();
   }, [taskId]);
 
+  // Mark admin messages as read when component mounts
+  useEffect(() => {
+    const markAdminMessagesAsRead = async () => {
+      if (!task || !task.remarksChat || task.remarksChat.length === 0) return;
+      
+      const hasUnreadAdminMessages = task.remarksChat.some(
+        (msg) => msg.senderRole === "admin" && !msg.employeeRead
+      );
+      
+      if (hasUnreadAdminMessages) {
+        const updatedChat = task.remarksChat.map((msg) => ({
+          ...msg,
+          employeeRead: msg.senderRole === "admin" ? true : msg.employeeRead || false
+        }));
+        
+        try {
+          await updateDoc(doc(db, "tasks", taskId), {
+            remarksChat: updatedChat,
+          });
+        } catch (error) {
+          console.error("Error marking messages as read:", error);
+        }
+      }
+    };
+    
+    if (task) {
+      markAdminMessagesAsRead();
+    }
+  }, [task, taskId]);
+
   // Listen to real-time chat updates
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, "tasks", taskId), (doc) => {
@@ -125,6 +155,7 @@ const TaskDetail = () => {
         sentById: currentUser.uid,
         senderRole: "employee",
         sentAt: new Date().toISOString(),
+        employeeRead: true, // Employee's own messages are already "read"
       };
 
       await updateDoc(doc(db, "tasks", taskId), {
