@@ -171,13 +171,20 @@ const EmployeeTasks = () => {
                   <h3 className="text-lg font-bold text-white truncate">
                     {task.name}
                   </h3>
-                  <p className="text-xs text-gray-200 mt-1">
-                    Created: {new Date(task.createdAt).toLocaleDateString()}
-                  </p>
                 </div>
 
                 {/* Card Body */}
                 <div className="p-4 space-y-3">
+                  {/* Created Date */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                      Created:
+                    </span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(task.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
                   {/* Status */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600">

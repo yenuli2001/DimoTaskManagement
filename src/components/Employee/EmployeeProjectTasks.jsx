@@ -66,13 +66,25 @@ const EmployeeProjectTasks = () => {
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
+        {/* Back Button with Icon */}
         <button
           onClick={() => navigate("/employee")}
-          className="mb-6 text-dimo-blue hover:text-dimo-dark flex items-center space-x-2"
+          className="mb-6 inline-flex items-center text-dimo-blue hover:text-dimo-dark transition-colors duration-200 group"
         >
-          <span>←</span>
-          <span>Back to Dashboard</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 transform group-hover:-translate-x-1 transition-transform duration-200"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
         </button>
 
         {/* Project Header */}
@@ -101,13 +113,20 @@ const EmployeeProjectTasks = () => {
                   <h3 className="text-lg font-bold text-white truncate">
                     {task.name}
                   </h3>
-                  <p className="text-xs text-gray-200 mt-1">
-                    Created: {new Date(task.createdAt).toLocaleDateString()}
-                  </p>
                 </div>
 
                 {/* Card Body */}
                 <div className="p-4 space-y-3">
+                  {/* Created Date */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                      Created:
+                    </span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(task.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
                   {/* Status */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600">
@@ -136,7 +155,7 @@ const EmployeeProjectTasks = () => {
                   {task.approved && (
                     <div className="pt-3 border-t border-gray-200">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                        ✓ Approved 
+                        ✓ Approved
                       </span>
                     </div>
                   )}
