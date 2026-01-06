@@ -506,9 +506,9 @@ const TaskDetail = () => {
             )}
 
             {/* Chat Section */}
-            <div className="border-2 border-purple-200 rounded-lg overflow-hidden">
+            <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
               {/* Chat Header */}
-              <div className="bg-gradient-to-r from-purple-500 to-purple-700 text-white p-4">
+              <div className="bg-gradient-to-r from-gray-500 to-gray-700 text-white p-4">
                 <div className="flex items-center space-x-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -526,12 +526,12 @@ const TaskDetail = () => {
                   </svg>
                   <h3 className="text-lg font-semibold">Task Discussion</h3>
                   {messages.length > 0 && (
-                    <span className="bg-purple-800 text-white text-xs px-2 py-1 rounded-full">
+                    <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded-full">
                       {messages.length}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-purple-100 mt-1">
+                <p className="text-xs text-gray-100 mt-1">
                   Communicate with admin about this task
                 </p>
               </div>
@@ -571,7 +571,7 @@ const TaskDetail = () => {
                         <div
                           className={`max-w-[70%] rounded-lg p-4 ${
                             msg.senderRole === "employee"
-                              ? "bg-green-500 text-white"
+                              ? "bg-blue-500 text-white"
                               : "bg-white border border-gray-200 text-gray-900"
                           }`}
                         >
@@ -582,7 +582,7 @@ const TaskDetail = () => {
                             <span
                               className={`px-2 py-0.5 text-xs rounded-full ${
                                 msg.senderRole === "employee"
-                                  ? "bg-green-600 text-green-100"
+                                  ? "bg-blue-600 text-green-100"
                                   : "bg-gray-100 text-gray-600"
                               }`}
                             >
@@ -629,7 +629,7 @@ const TaskDetail = () => {
                         : "Type your message..."
                     }
                     disabled={task.approved}
-                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                     rows="2"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
@@ -641,7 +641,7 @@ const TaskDetail = () => {
                   <button
                     type="submit"
                     disabled={sending || !message.trim() || task.approved}
-                    className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                   >
                     <span>Send</span>
                     <svg

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   collection,
@@ -104,9 +104,8 @@ const EmployeeTasks = () => {
   // Helper function to count unread messages from employee
   const getUnreadEmployeeMessages = (task) => {
     if (!task.remarksChat || task.remarksChat.length === 0) return 0;
-    return task.remarksChat.filter(
-      (msg) => msg.senderRole === "employee" && !msg.adminRead
-    ).length;
+    // Count messages from employee that might need admin attention
+    return task.remarksChat.filter(msg => msg.senderRole === "employee").length;
   };
 
   const handleApprove = async (taskId) => {
@@ -208,279 +207,266 @@ const EmployeeTasks = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tasks.map((task) => {
-              const unreadCount = getUnreadEmployeeMessages(task);
-              
-              return (
-                <div
-                  key={task.id}
-                  className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 overflow-hidden"
-                >
-                  {/* Card Header */}
-                  <div className="bg-gradient-to-r from-dimo-blue to-dimo-dark p-4">
-                    <h3 className="text-lg font-bold text-white truncate">
-                      {task.name}
-                    </h3>
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 overflow-hidden"
+              >
+                {/* Card Header */}
+                <div className="bg-gradient-to-r from-dimo-blue to-dimo-dark p-4">
+                  <h3 className="text-lg font-bold text-white truncate">
+                    {task.name}
+                  </h3>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-4 space-y-3">
+                  {/* Created Date */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                      Created:
+                    </span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(task.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
 
-                  {/* Card Body */}
-                  <div className="p-4 space-y-3">
-                    {/* Created Date */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-600">
-                        Created:
-                      </span>
-                      <span className="text-sm text-gray-900">
-                        {new Date(task.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    {/* Status */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-600">
-                        Status:
-                      </span>
-                      <div className="flex items-center space-x-2">
-                        <span
-                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
-                            ${
-                              task.status === "complete"
-                                ? "bg-green-100 text-green-800"
-                                : ""
-                            }
-                            ${
-                              task.status === "in-progress"
-                                ? "bg-blue-100 text-blue-800"
-                                : ""
-                            }
-                            ${
-                              task.status === "not-started"
-                                ? "bg-gray-100 text-gray-800"
-                                : ""
-                            }
-                            ${
-                              task.status === "hold"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : ""
-                            }
-                          `}
-                        >
-                          {task.status.replace("-", " ").toUpperCase()}
-                        </span>
-                        {task.approved && (
-                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            ✓
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Approval Info - Only if task is approved */}
-                    {task.approved && getApprovalDate(task) && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                        <div className="flex items-center space-x-2">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 text-green-600"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          <p className="text-xs font-medium text-green-800">
-                            Approved
-                          </p>
-                        </div>
-                        <p className="text-xs text-green-700 mt-1">
-                          {new Date(getApprovalDate(task)).toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Hold Reason - Only if task is on hold */}
-                    {task.status === "hold" && task.holdReason && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                        <p className="text-xs font-medium text-yellow-800 mb-1">
-                          Reason for Hold:
-                        </p>
-                        <p className="text-sm text-yellow-700 italic">
-                          {task.holdReason}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Rejection Reason - Only if task has been rejected */}
-                    {task.rejectionReason && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                        <p className="text-xs font-medium text-red-800 mb-1">
-                          Rejection Reason:
-                        </p>
-                        <p className="text-sm text-red-700 mb-2">
-                          {task.rejectionReason}
-                        </p>
-                        {getRejectionDate(task) && (
-                          <p className="text-xs text-red-600">
-                            Rejected on: {new Date(getRejectionDate(task)).toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Latest Message Preview - Only if messages exist */}
-                    {getLatestMessage(task) && (
-                      <div 
-                        className="bg-purple-50 border border-purple-200 rounded-lg p-3 cursor-pointer hover:bg-purple-100 transition"
-                        onClick={() => handleChatClick(task)}
+                  {/* Status */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                      Status:
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                          ${
+                            task.status === "complete"
+                              ? "bg-green-100 text-green-800"
+                              : ""
+                          }
+                          ${
+                            task.status === "in-progress"
+                              ? "bg-blue-100 text-blue-800"
+                              : ""
+                          }
+                          ${
+                            task.status === "not-started"
+                              ? "bg-gray-100 text-gray-800"
+                              : ""
+                          }
+                          ${
+                            task.status === "hold"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : ""
+                          }
+                        `}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-xs font-medium text-purple-800">
-                            Latest Message:
-                          </p>
-                          <span className={`px-2 py-0.5 text-xs rounded-full ${
-                            getLatestMessage(task).senderRole === 'admin' 
-                              ? 'bg-blue-100 text-blue-700' 
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                            {getLatestMessage(task).senderRole === 'admin' ? 'You' : employee?.name}
-                          </span>
-                        </div>
-                        <p className="text-sm text-purple-900 line-clamp-2">
-                          {getLatestMessage(task).text}
-                        </p>
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs text-purple-600">
-                            {task.remarksChat.length} message(s) • Click to view chat
-                          </p>
-                          {unreadCount > 0 && (
-                            <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                              {unreadCount} new
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Target Date */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-600">
-                        Target Date:
+                        {task.status.replace("-", " ").toUpperCase()}
                       </span>
-                      <span className="text-sm text-gray-900">
-                        {new Date(task.targetDate).toLocaleDateString()}
-                      </span>
+                      {task.approved && (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          ✓
+                        </span>
+                      )}
                     </div>
+                  </div>
 
-                    {/* Divider */}
-                    <div className="border-t border-gray-200 pt-3">
-                      {/* Actions */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/* Chat Button */}
-                        <button
-                          onClick={() => handleChatClick(task)}
-                          className="flex items-center space-x-1 text-purple-600 hover:text-purple-800 px-3 py-1.5 rounded hover:bg-purple-50 transition text-sm relative"
-                          title="Open chat"
+                  {/* Approval Info - Only if task is approved */}
+                  {task.approved && getApprovalDate(task) && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center space-x-2">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 text-green-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                            />
-                          </svg>
-                          <span>Chat</span>
-                          {task.remarksChat && task.remarksChat.length > 0 && (
-                            <span className={`${
-                              unreadCount > 0 ? 'bg-red-500' : 'bg-purple-600'
-                            } text-white text-xs rounded-full w-5 h-5 flex items-center justify-center`}>
-                              {unreadCount > 0 ? unreadCount : task.remarksChat.length}
-                            </span>
-                          )}
-                        </button>
-
-                        {/* Edit Button - Always visible */}
-                        <button
-                          onClick={() => handleEditTask(task)}
-                          className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded hover:bg-blue-50 transition text-sm"
-                          title="Edit task"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            />
-                          </svg>
-                          <span>Edit</span>
-                        </button>
-
-                        {/* Approve/Reject buttons for complete tasks */}
-                        {task.status === "complete" && !task.approved && (
-                          <>
-                            <button
-                              onClick={() => handleApprove(task.id)}
-                              className="flex-1 bg-green-500 text-white px-3 py-1.5 rounded hover:bg-green-600 transition text-sm font-medium"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleRejectClick(task.id)}
-                              className="flex-1 bg-red-500 text-white px-3 py-1.5 rounded hover:bg-red-600 transition text-sm font-medium"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-
-                        {/* Delete button for approved tasks */}
-                        {task.approved && (
-                          <button
-                            onClick={() => handleDeleteTask(task.id, task.name)}
-                            className="flex items-center space-x-1 text-red-600 hover:text-red-800 px-3 py-1.5 rounded hover:bg-red-50 transition text-sm"
-                            title="Delete task"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                            <span>Delete</span>
-                          </button>
-                        )}
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <p className="text-xs font-medium text-green-800">
+                          Approved
+                        </p>
                       </div>
+                      <p className="text-xs text-green-700 mt-1">
+                        {new Date(getApprovalDate(task)).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Hold Reason - Only if task is on hold */}
+                  {task.status === "hold" && task.holdReason && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-xs font-medium text-yellow-800 mb-1">
+                        Reason for Hold:
+                      </p>
+                      <p className="text-sm text-yellow-700 italic">
+                        {task.holdReason}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Rejection Reason - Only if task has been rejected */}
+                  {task.rejectionReason && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-xs font-medium text-red-800 mb-1">
+                        Rejection Reason:
+                      </p>
+                      <p className="text-sm text-red-700 mb-2">
+                        {task.rejectionReason}
+                      </p>
+                      {getRejectionDate(task) && (
+                        <p className="text-xs text-red-600">
+                          Rejected on: {new Date(getRejectionDate(task)).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Latest Message Preview - Only if messages exist */}
+                  {getLatestMessage(task) && (
+                    <div 
+                      className="bg-purple-50 border border-purple-200 rounded-lg p-3 cursor-pointer hover:bg-purple-100 transition"
+                      onClick={() => handleChatClick(task)}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-medium text-purple-800">
+                          Latest Message:
+                        </p>
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${
+                          getLatestMessage(task).senderRole === 'admin' 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {getLatestMessage(task).senderRole === 'admin' ? 'You' : employee?.name}
+                        </span>
+                      </div>
+                      <p className="text-sm text-purple-900 line-clamp-2">
+                        {getLatestMessage(task).text}
+                      </p>
+                      <p className="text-xs text-purple-600 mt-1">
+                        {task.remarksChat.length} message(s) • Click to view chat
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Target Date */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                      Target Date:
+                    </span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(task.targetDate).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-200 pt-3">
+                    {/* Actions */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Chat Button */}
+                      <button
+                        onClick={() => handleChatClick(task)}
+                        className="flex items-center space-x-1 text-purple-600 hover:text-purple-800 px-3 py-1.5 rounded hover:bg-purple-50 transition text-sm"
+                        title="Open chat"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                          />
+                        </svg>
+                        <span>Chat</span>
+                        {task.remarksChat && task.remarksChat.length > 0 && (
+                          <span className="bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                            {task.remarksChat.length}
+                          </span>
+                        )}
+                      </button>
+
+                      {/* Edit Button - Always visible */}
+                      <button
+                        onClick={() => handleEditTask(task)}
+                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded hover:bg-blue-50 transition text-sm"
+                        title="Edit task"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        <span>Edit</span>
+                      </button>
+
+                      {/* Approve/Reject buttons for complete tasks */}
+                      {task.status === "complete" && !task.approved && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(task.id)}
+                            className="flex-1 bg-green-500 text-white px-3 py-1.5 rounded hover:bg-green-600 transition text-sm font-medium"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectClick(task.id)}
+                            className="flex-1 bg-red-500 text-white px-3 py-1.5 rounded hover:bg-red-600 transition text-sm font-medium"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+
+                      {/* Delete button for approved tasks */}
+                      {task.approved && (
+                        <button
+                          onClick={() => handleDeleteTask(task.id, task.name)}
+                          className="flex items-center space-x-1 text-red-600 hover:text-red-800 px-3 py-1.5 rounded hover:bg-red-50 transition text-sm"
+                          title="Delete task"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                          <span>Delete</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -537,35 +523,7 @@ const ChatModal = ({ task, employeeName, onClose }) => {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState(task.remarksChat || []);
-  const messagesEndRef = useRef(null);
-
-  // Mark messages as read when chat opens
-  useEffect(() => {
-    const markMessagesAsRead = async () => {
-      if (!task.remarksChat || task.remarksChat.length === 0) return;
-      
-      const hasUnread = task.remarksChat.some(
-        (msg) => msg.senderRole === "employee" && !msg.adminRead
-      );
-      
-      if (hasUnread) {
-        const updatedChat = task.remarksChat.map((msg) => ({
-          ...msg,
-          adminRead: msg.senderRole === "employee" ? true : msg.adminRead || false
-        }));
-        
-        try {
-          await updateDoc(doc(db, "tasks", task.id), {
-            remarksChat: updatedChat,
-          });
-        } catch (error) {
-          console.error("Error marking messages as read:", error);
-        }
-      }
-    };
-    
-    markMessagesAsRead();
-  }, [task.id, task.remarksChat]);
+  const messagesEndRef = useState(null);
 
   // Listen to real-time updates
   useEffect(() => {
@@ -599,7 +557,6 @@ const ChatModal = ({ task, employeeName, onClose }) => {
         sentById: "admin",
         senderRole: "admin",
         sentAt: new Date().toISOString(),
-        adminRead: true, // Admin's own messages are already "read"
       };
 
       await updateDoc(doc(db, "tasks", task.id), {
@@ -619,11 +576,11 @@ const ChatModal = ({ task, employeeName, onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-3xl w-full h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-500 to-purple-700 text-white p-6 rounded-t-lg flex items-center justify-between">
+        <div className="bg-gradient-to-r from-gray-500 to-gray-700 text-white p-6 rounded-t-lg flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Task Chat</h2>
             <p className="text-sm text-purple-100 mt-1">{task.name}</p>
-            <p className="text-xs text-purple-200 mt-1">
+            <p className="text-xs text-gray-200 mt-1">
               Chatting with: {employeeName}
             </p>
           </div>
@@ -736,7 +693,7 @@ const ChatModal = ({ task, employeeName, onClose }) => {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent outline-none resize-none"
               rows="2"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -748,7 +705,7 @@ const ChatModal = ({ task, employeeName, onClose }) => {
             <button
               type="submit"
               disabled={sending || !message.trim()}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               <span>Send</span>
               <svg
