@@ -7,6 +7,7 @@ import {
   addDoc,
   doc,
   getDoc,
+  getDocs,
   deleteDoc,
   updateDoc,
   where,
@@ -186,15 +187,29 @@ const AdminDashboard = () => {
     setOpenMenuId(null);
 
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete "${projectName}"? This action cannot be undone.`
+      `Are you sure you want to delete "${projectName}"? This will also delete all tasks associated with this project. This action cannot be undone.`
     );
 
     if (confirmDelete) {
       try {
+        // First, delete all tasks associated with this project
+        const tasksQuery = query(
+          collection(db, "tasks"),
+          where("projectId", "==", projectId)
+        );
+        const tasksSnapshot = await getDocs(tasksQuery);
+        
+        // Delete all tasks in parallel
+        const deleteTaskPromises = tasksSnapshot.docs.map((taskDoc) =>
+          deleteDoc(doc(db, "tasks", taskDoc.id))
+        );
+        await Promise.all(deleteTaskPromises);
+
+        // Then delete the project
         await deleteDoc(doc(db, "projects", projectId));
       } catch (error) {
         console.error("Error deleting project:", error);
-        alert("Failed to delete project");
+        alert("Failed to delete project and its tasks");
       }
     }
   };
