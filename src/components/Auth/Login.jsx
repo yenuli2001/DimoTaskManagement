@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import dimoLogo from '../../assets/wurkai-logo1.png'
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -30,7 +31,7 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-dimo-blue to-dimo-dark flex items-center justify-center px-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-dimo-blue">DIMO</h2>
+          <h2 className="text-3xl font-bold text-dimo-blue"><img src={dimoLogo} alt="DIMO Logo" className="h-6 w-auto mx-auto" /></h2>
           <p className="text-gray-600 mt-2">Task Manager Login</p>
         </div>
 

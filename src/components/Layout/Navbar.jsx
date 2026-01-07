@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
-import dimoLogo from '../../assets/WURKAI.jpeg'; 
+import dimoLogo from '../../assets/wurkai-logo1.png'; 
 
 const Navbar = () => {
   const { logout, currentUser, userRole } = useAuth();
@@ -41,7 +41,7 @@ const Navbar = () => {
             <img 
               src={dimoLogo} 
               alt="DIMO Logo" 
-              className="h-8 sm:h-10 md:h-12 w-auto"
+              className="h-5 sm:h-4 md:h-4 "
             />
           </div>
 
