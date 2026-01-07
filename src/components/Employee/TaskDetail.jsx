@@ -149,9 +149,13 @@ const TaskDetail = () => {
     setSending(true);
 
     try {
+      // Get user's name from Firestore
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+      const userName = userDoc.exists() ? userDoc.data().name : "Employee";
+
       const newMessage = {
         text: message.trim(),
-        sentBy: currentUser.displayName || currentUser.email || "Employee",
+        sentBy: userName, // Use actual name from Firestore
         sentById: currentUser.uid,
         senderRole: "employee",
         sentAt: new Date().toISOString(),
@@ -575,27 +579,16 @@ const TaskDetail = () => {
                               : "bg-white border border-gray-200 text-gray-900"
                           }`}
                         >
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-xs font-semibold opacity-75">
-                              {msg.sentBy}
-                            </span>
-                            <span
-                              className={`px-2 py-0.5 text-xs rounded-full ${
-                                msg.senderRole === "employee"
-                                  ? "bg-blue-600 text-green-100"
-                                  : "bg-gray-100 text-gray-600"
-                              }`}
-                            >
-                              {msg.senderRole === "employee" ? "You" : "Admin"}
-                            </span>
-                          </div>
+                          <p className="text-xs font-semibold opacity-75 mb-2">
+                            {msg.sentBy}
+                          </p>
                           <p className="text-sm whitespace-pre-wrap break-words">
                             {msg.text}
                           </p>
                           <p
                             className={`text-xs mt-2 ${
                               msg.senderRole === "employee"
-                                ? "text-green-100"
+                                ? "text-blue-100"
                                 : "text-gray-500"
                             }`}
                           >
