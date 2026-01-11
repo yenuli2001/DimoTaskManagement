@@ -10,6 +10,16 @@ import EmployeeProjectTasks from "./components/Employee/EmployeeProjectTasks";
 import TaskDetail from "./components/Employee/TaskDetail";
 import ProtectedRoute from "./components/Layout/ProtectedRoute";
 
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
+
 const AppRoutes = () => {
   const { currentUser, userRole } = useAuth();
 
@@ -21,7 +31,7 @@ const AppRoutes = () => {
           !currentUser ? (
             <Login />
           ) : (
-            <Navigate to={userRole === "admin" ? "/admin" : "/employee"} />
+            <Navigate to={userRole === "admin" ? "/admin" : "/employee"} replace />
           )
         }
       />
@@ -31,7 +41,7 @@ const AppRoutes = () => {
           !currentUser ? (
             <Register />
           ) : (
-            <Navigate to={userRole === "admin" ? "/admin" : "/employee"} />
+            <Navigate to={userRole === "admin" ? "/admin" : "/employee"} replace />
           )
         }
       />
@@ -93,27 +103,17 @@ const AppRoutes = () => {
         path="/"
         element={
           currentUser ? (
-            <Navigate to={userRole === "admin" ? "/admin" : "/employee"} />
+            <Navigate to={userRole === "admin" ? "/admin" : "/employee"} replace />
           ) : (
-            <Navigate to="/login" />
+            <Navigate to="/login" replace />
           )
         }
       />
 
       {/* Catch all */}
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
-
-function App() {
-  return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
-  );
-}
 
 export default App;
