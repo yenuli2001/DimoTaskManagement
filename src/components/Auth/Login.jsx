@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import dimoLogo from "../../assets/wurkai-logo1.png";
+// import dimoLogo from "../../assets/wurkai-logo1.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -30,9 +30,9 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-dimo-dark via-dimo-blue to-gray-900 flex items-center justify-center relative overflow-hidden">
       {/* Background parallelograms in wave pattern */}
-      <div className="absolute inset-0">
+      {/* <div className="absolute inset-0"> */}
         {/* Parallelogram 1 - Upper-middle */}
-        <div
+        {/* <div
           className="absolute w-80 overflow-hidden shadow-2xl"
           style={{
             top: "10%",
@@ -48,10 +48,10 @@ const Login = () => {
             style={{ transform: "skewX(15deg) scale(1.4)" }}
           />
           <div className="absolute inset-0 bg-dimo-blue/30"></div>
-        </div>
+        </div> */}
 
         {/* Parallelogram 2 - Lower-middle */}
-        <div
+        {/* <div
           className="absolute w-80 overflow-hidden shadow-2xl"
           style={{
             top: "25%",
@@ -67,10 +67,10 @@ const Login = () => {
             style={{ transform: "skewX(15deg) scale(1.4)" }}
           />
           <div className="absolute inset-0 bg-dimo-dark/30"></div>
-        </div>
+        </div> */}
 
         {/* Parallelogram 3 - Upper-middle (same as #1) */}
-        <div
+        {/* <div
           className="absolute w-80  overflow-hidden shadow-2xl"
           style={{
             top: "10%",
@@ -86,10 +86,10 @@ const Login = () => {
             style={{ transform: "skewX(15deg) scale(1.4)" }}
           />
           <div className="absolute inset-0 bg-dimo-blue/30"></div>
-        </div>
+        </div> */}
 
         {/* Parallelogram 4 - Lower-middle (same as #2) */}
-        <div
+        {/* <div
           className="absolute w-80  overflow-hidden shadow-2xl"
           style={{
             top: "25%",
@@ -105,10 +105,10 @@ const Login = () => {
             style={{ transform: "skewX(15deg) scale(1.4)" }}
           />
           <div className="absolute inset-0 bg-dimo-dark/30"></div>
-        </div>
+        </div> */}
 
         {/* Parallelogram 5 - Upper-middle (same as #1) */}
-        <div
+        {/* <div
           className="absolute w-80  overflow-hidden shadow-2xl"
           style={{
             top: "10%",
@@ -124,22 +124,22 @@ const Login = () => {
             style={{ transform: "skewX(15deg) scale(1.4)" }}
           />
           <div className="absolute inset-0 bg-dimo-blue/30"></div>
-        </div>
+        </div> */}
 
         {/* Dark overlay for better form visibility */}
-        <div className="absolute inset-0 bg-black/40"></div>
-      </div>
+        {/* <div className="absolute inset-0 bg-black/40"></div>
+      </div> */}
 
       {/* Login Form Card - Centered on top */}
       <div className="relative z-10 w-full max-w-md px-6">
         <div className="bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/20">
           {/* Logo */}
           <div className="text-center mb-8">
-            <img
+            {/* <img
               src={dimoLogo}
               alt="DIMO Logo"
               className="h-14 w-auto mx-auto mb-6"
-            />
+            /> */}
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
               Welcome Back
             </h2>
